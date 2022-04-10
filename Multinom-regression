@@ -1,0 +1,90 @@
+library(tidyverse)
+library(nnet)
+
+# make nat. log function
+ln <- function(x)
+{
+  y <- log(x, base = exp(1))
+  return(y)
+}
+
+# change vore to factor variable by amt of meat consumed
+msleep <- msleep %>% filter(is.na(vore) == FALSE)
+msleep_factor <- as.double(factor(msleep$vore, levels = c("herbi", "omni", "carni", "insecti")))
+# multinomial regression to check if there is a signficant relationship between
+# diet and other variables
+
+# sleep_total
+msleep %>% ggplot(aes(x = vore, y = sleep_total)) +
+  geom_boxplot()
+
+multinom_model <- summary(multinom(msleep_factor ~ sleep_total, 
+                          data = filter(msleep, is.na(sleep_total) == FALSE), 
+                          Hess = TRUE))
+multinom_model
+# confidence interval :
+
+# body weight
+msleep %>% ggplot(aes(x = vore, y = bodywt)) +
+  geom_boxplot()
+
+# not very helpful
+msleep %>% ggplot(aes(x = vore, y = ln(bodywt))) +
+  geom_boxplot()
+
+multinom_model <- summary(multinom(msleep_factor ~ ln(bodywt), 
+                          data = filter(msleep, is.na(bodywt) == FALSE)),
+                          Hess = TRUE)
+multinom_model
+# compute confidence interval :
+
+# covariance matrix
+V(x) <- round(solve(multinom_model$Hessian), 3)
+
+# relative brain wt
+
+msleep <- msleep %>% mutate(
+  rel_brainwt = brainwt / bodywt
+) %>% filter(is.na(rel_brainwt) == FALSE)
+
+msleep %>% ggplot(aes(x = vore, y = rel_brainwt)) +
+  geom_boxplot()
+
+multinom_model <- summary(multinom(msleep_factor ~ rel_brainwt, 
+                          data = filter(msleep)),
+                          Hess = TRUE)
+multinom_model
+# compute confidence interval :
+
+# covariance matrix
+V(x) <- round(solve(multinom_model$Hessian), 3)
+
+# awake
+multinom_model <- summary(multinom(msleep_factor ~ awake, 
+                          data = filter(msleep, is.na(awake == FALSE))),
+                          Hess = TRUE)
+multinom_model
+# compute confidence interval for carnivores :
+
+# covariance matrix
+V(x) <-  round(solve(multinom_model$Hessian), 3)
+
+
+# sleep_cycle
+multinom_model <- summary(multinom(msleep_factor ~ sleep_cycle, data = msleep),
+        Hess = TRUE)
+multinom_model
+# compute confidence interval :
+
+# covariance matrix
+V(x) <- round(solve(multinom_model$Hessian), 3)
+
+# sleep_rem 
+multinom_model <- summary(multinom(msleep_factor ~ sleep_rem, data = msleep),
+        Hess = TRUE)
+multinom_model
+# compute confidence interval :
+
+# covariance matrix
+V(x) <- round(solve(multinom_model$Hessian), 3)
+
