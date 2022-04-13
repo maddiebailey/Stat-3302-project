@@ -1,0 +1,265 @@
+---
+title: "Stat 3302 Final Project"
+author: "Jimmy Erkens"
+date: '2022-04-11'
+output: html_document
+---
+
+### Libraries
+```{r, message = FALSE}
+library(tidyverse)
+library(nnet)
+```
+
+## Functions
+```{r}
+# make nat. log function
+ln <- function(x)
+{
+  y <- log(x, base = exp(1))
+  return(y)
+}
+
+p_value <- function(model){
+z <- summary(model)$coefficients/summary(model)$standard.errors
+
+p <- (1 - pnorm(abs(z), 0, 1)) * 2
+return(p)
+}
+```
+
+### Change vore to factor variable by amt of meat consumed
+```{r}
+msleep <- msleep %>% filter(is.na(vore) == FALSE) %>% 
+  # eats meat or doesn't eat meat
+  mutate(meat = ifelse(vore == "herbi", FALSE, TRUE))
+msleep_factor <- as.double(factor(msleep$meat, levels = c(FALSE, TRUE)))
+omni_factor <- as.double(factor(msleep$vore, levels = c("omni", "herbi", "carni", "insecti")))
+```
+
+
+## sleep_total multinomial model
+```{r}
+msleep %>% ggplot(aes(x = vore, y = sleep_total)) +
+  geom_boxplot()
+
+multinom_model <- multinom(omni_factor ~ sleep_total, 
+                          data = filter(msleep, is.na(sleep_total) == FALSE), 
+                          Hess = TRUE)
+multinom_model
+```
+
+## Statistical stuff
+
+for omnivores vs. everyone else
+```{r}
+covariance <- round(solve(multinom_model$Hessian), 3)
+alpha <- 0.2098 + 0.02402 - 0.21875
+exp(alpha)
+
+alpha_matrix <- matrix(c(0, -1, 0, -1, 0, -1), nrow = 1, ncol = 6)
+se_alpha <- sqrt(alpha_matrix %*% covariance %*% t(alpha_matrix))
+
+# confidence interval :
+LB <- alpha - (1.96 * se_alpha)
+UB <- alpha + (1.96 * se_alpha)
+exp(LB)
+exp(UB)
+
+p_value(multinom_model)
+```
+
+Only significant coefficient is omnivore vs. herbivore. 
+
+# body weight
+
+```{r}
+msleep %>% ggplot(aes(x = vore, y = bodywt)) +
+  geom_boxplot()
+
+msleep %>% ggplot(aes(x = vore, y = ln(bodywt))) +
+  geom_boxplot()
+
+multinom_model <- multinom(omni_factor ~ ln(bodywt), 
+                          data = filter(msleep, is.na(bodywt) == FALSE),
+                          Hess = TRUE)
+multinom_model
+```
+
+## confidence interval 
+
+```{r}
+covariance <- round(solve(multinom_model$Hessian), 3)
+alpha <- - 0.1964 - 0.1918 + 0.1570
+exp(alpha)
+
+alpha_matrix <- matrix(c(0, -1, 0, -1, 0, -1), nrow = 1, ncol = 6)
+se_alpha <- sqrt(alpha_matrix %*% covariance %*% t(alpha_matrix))
+
+# confidence interval :
+LB <- alpha - (1.96 * se_alpha)
+UB <- alpha + (1.96 * se_alpha)
+exp(LB)
+exp(UB)
+
+p_value(multinom_model)
+```
+
+The chances a mammal is an omnivore over any other diet increases 0.7935 times for each ln(kilogram) increase in ln(body weight). A 95% confidence interval is : (0.418, 1.506). No significant p-value, body weight is not useful for predicting the odds of being an omnivore over other diets.
+
+
+# relative brain wt
+
+```{r}
+msleep <- msleep %>% mutate(
+  rel_brainwt = 100 * brainwt / bodywt
+) %>% filter(is.na(rel_brainwt) == FALSE)
+
+msleep %>% ggplot(aes(x = meat, y = rel_brainwt)) +
+  geom_boxplot()
+
+multinom_model_meat <- multinom(msleep_factor ~ rel_brainwt, 
+                          data = msleep,
+                          Hess = TRUE)
+multinom_model_meat
+multinom_model_omni <- multinom(omni_factor ~ rel_brainwt,
+                                data = msleep,
+                                Hess = TRUE)
+multinom_model_omni
+```
+# compute confidence interval for meat
+
+```{r}
+covariance <- round(solve(multinom_model_meat$Hessian), 3)
+alpha <- 
+exp(alpha)
+
+alpha_matrix <- matrix(c(0, 1), nrow = 1, ncol = 2)
+se_alpha <- sqrt(alpha_matrix %*% covariance %*% t(alpha_matrix))
+
+# confidence interval :
+LB <- alpha - (1.96 * se_alpha)
+UB <- alpha + (1.96 * se_alpha)
+exp(LB)
+exp(UB)
+
+p_value(multinom_model_meat)
+```
+The chances a mammal is an meat-eater over an herbivore increases 2.1148 times for each one-unit increase in the ratio in 10 x brain weight : body weight. A 95% confidence interval is : (0.9703, 4.609), barely not significant. 
+
+# confidence interval for omnivore
+
+```{r}
+covariance <- round(solve(multinom_model_omni$Hessian), 3)
+alpha <- -1.0699 - 1.0866 - 0.3079
+exp(alpha)
+
+alpha_matrix <- matrix(c(0, -1, 0, -1, 0, -1), nrow = 1, ncol = 6)
+se_alpha <- sqrt(alpha_matrix %*% covariance %*% t(alpha_matrix))
+
+# confidence interval :
+LB <- alpha - (1.96 * se_alpha)
+UB <- alpha + (1.96 * se_alpha)
+exp(LB)
+exp(UB)
+msleep %>% ggplot(aes(x = vore, y = rel_brainwt)) +
+  geom_boxplot()
+
+p_value(multinom_model_omni)
+```
+
+The chances a mammal is an any other animal over an omnivore increases 0.085 times for each one-unit increase in the ratio in 100 x brain weight : body weight. A 95% confidence interval is : (0.009805, 0.7378) -> conclude there is a significant relationship between being an omnivore and relative brain weight. Moreover, looking at p-values, we note that there is not a significant difference between insectivores and omnivores. 
+
+
+
+# sleep_cycle
+
+```{r}
+multinom_model <- multinom(msleep_factor ~ sleep_cycle, 
+                                   data = msleep, Hess = TRUE)
+msleep %>% ggplot(aes(x = meat, y = sleep_cycle)) +
+  geom_boxplot()
+
+multinom_model
+```
+# compute confidence interval 
+
+```{r}
+covariance <- round(solve(multinom_model$Hessian), 3)
+alpha <- 0.6929
+exp(alpha)
+
+alpha_matrix <- matrix(c(0, 1), nrow = 1, ncol = 2)
+se_alpha <- sqrt(alpha_matrix %*% covariance %*% t(alpha_matrix))
+
+# confidence interval :
+LB <- alpha - (1.96 * se_alpha)
+UB <- alpha + (1.96 * se_alpha)
+exp(LB)
+exp(UB)
+
+p_value(multinom_model)
+```
+
+The chances a mammal is an meat eater over an herbivore other increases 2 times for each one-unit increase in sleep cycle length. A 95% confidence interval is : (0.211, 18.87). P-value corroborates this notion 0.5452.
+
+
+## omnivorous dorks
+
+```{r}
+msleep %>% ggplot(aes(x = vore, y = sleep_cycle)) +
+  geom_boxplot()
+multinom_model <- multinom(omni_factor ~ sleep_cycle, 
+                           data = msleep,
+                           Hess = TRUE)
+ multinom_model
+p_value(multinom_model)
+```
+
+# sleep_rem 
+
+```{r}
+multinom_model <- multinom(msleep_factor ~ sleep_rem, 
+                           data = msleep,
+                           Hess = TRUE)
+msleep %>% ggplot(aes(x = meat, y = sleep_rem)) +
+  geom_boxplot()
+multinom_model
+```
+
+# compute confidence interval 
+
+```{r}
+covariance <- round(solve(multinom_model$Hessian), 3)
+alpha <- 1.2867
+exp(alpha)
+
+alpha_matrix <- matrix(c(0, 1), nrow = 1, ncol = 2)
+se_alpha <- sqrt(alpha_matrix %*% covariance %*% t(alpha_matrix))
+
+# confidence interval :
+LB <- alpha - (1.96 * se_alpha)
+UB <- alpha + (1.96 * se_alpha)
+exp(LB)
+exp(UB)
+p_value(multinom_model)
+```
+
+The chances a mammal is an meat eater over an herbivore other increases 3.62 times for each one-unit increase in REM sleep length. A 95% confidence interval is : (1.406, 9.326) P-value = 0.007713.
+
+
+# what about omnivore losers 
+
+```{r}
+multinom_model <- multinom(omni_factor ~ sleep_rem, 
+                           data = msleep,
+                           Hess = TRUE)
+msleep %>% ggplot(aes(x = vore, y = sleep_rem)) +
+  geom_boxplot()
+ multinom_model
+p_value(multinom_model)
+```
+
+\
+Herbivores are significant compared to omnivores, insectivores are barely insignificant.
+
