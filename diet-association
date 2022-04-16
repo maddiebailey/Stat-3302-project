@@ -263,3 +263,34 @@ p_value(multinom_model)
 \
 Herbivores are significant compared to omnivores, insectivores are barely insignificant.
 
+
+Test for Interaction effect between body and brain weight, predicting diet type:
+```{r}
+multinom_model <- multinom(omni_factor ~ ln(bodywt) * ln(brainwt), 
+                          data = filter(msleep, is.na(bodywt) == FALSE),
+                          Hess = TRUE)
+summary(multinom_model)
+```
+2 = herbi, 3 = carni, 4 = insecti
+
+Model:
+log(p2/p1) = -6.86 + 1.32(lnbrainwt) -1.42(lnbodyWt) + 0.017(I)
+
+e^1.32 is the estimated chance quantifying the association between log brain weight and the odds of being an herbivore as opposed to an omnivore.
+
+e^0.0174 is the estimated chance quantifying the association between log brain weight combined with log brain weight, and again the odds 
+of being an herbivore as opposed to an omnivore.
+
+Test if interaction term is necessary:
+
+H0: In = 0
+H1: In != 0
+```{r}
+beta = 0.0366
+se = 0.0577
+2*pnorm(-abs(beta/se))
+```
+We fail to reject the null hypothesis, so there is little effect of body and brain weight whether we look at an herbivore versus an omnivore. when changing the values for $\hat{\beta}$ and the standard error, we see that the p-value is always greater than a significance level of $\alpha$ = 0.05, so the null hypothesis is never rejected.  Therefore we find that the interaction term is not necessary when comparing any diet type.  
+
+(The smallest p-value comes when comparing carnivores to omnivores)
+
