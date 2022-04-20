@@ -1,0 +1,38 @@
+---
+title: "Stat 3302 Final Submission"
+author: "Maddie Bailey, Jimmy Erkens, Piotr Ignatik, and Melina Raglin"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+# An analysis of mammalian sleep trends following msleep dataset 
+
+### Functions
+
+### Data Cleaning
+
+## Hypotheses Tested
+
+### There is a relationship between diet category and total amount of sleep
+
+### There is a relationship between eating meat and total amount of sleep
+
+### There is a relationship between diet category and total amount of REM sleep
+
+### There is a relationship between eating meat and total amount of REM sleep
+
+### There is a relationship between diet category and ln (Body Weight)
+
+### There is a relationship between diet category and relative brain weight
+
+### There is a relationship between eating meat and relative brain weight
+
+### An interaction effect is needed to model the relation between brain weight, body weight, and diet category
+
+### There is a relationship between conservation level and total amount of sleep
+
+### There is a relationship between conservation level and ln(Body Weight)
+
+### There is a relationship between domesticated status and relative brain weight
+
+### There is a relationship between conservation level and relative brain weight
