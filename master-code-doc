@@ -366,3 +366,155 @@ p_value(multinom_model)
 ### There is a relationship between domesticated status and relative brain weight
 
 ### There is a relationship between conservation level and relative brain weight
+
+---
+title: "Stat 3302 final 2"
+author: "Madison Bailey (bailey.1439)"
+date: "4/17/2022"
+output: html_document
+---
+### Libraries
+```{r, message = FALSE}
+library(tidyverse)
+library(nnet)
+msleep
+```
+
+### Change vore to factor variable by amt of meat consumed
+```{r}
+msleep <- msleep %>% filter(is.na(conservation) == FALSE) %>%
+#domesticated vs others
+mutate(dom = ifelse(conservation == "domesticated", FALSE, TRUE))
+msleep_factor <- as.double(factor(msleep$dom, levels = c(FALSE, TRUE)))
+# filter out "cd" from msleep (only one value, no longer used)
+dom_factor <- as.double(factor(msleep$conservation, levels = c("domesticated", "lc", "vu", "nt", "en")))
+```
+
+???
+## sleep_total multinomial model
+```{r}
+# visualizing the data (just ggplot deal, add titles)
+msleep %>% ggplot(aes(x = conservation, y = sleep_total)) +
+geom_boxplot()
+# this is correct dw
+multinom_model <- multinom(dom_factor ~ sleep_total, 
+            data = filter(msleep, is.na(sleep_total) == FALSE), Hess = TRUE)
+multinom_model
+```
+
+
+## Statistical analysis with conservation level
+
+for domesticated vs. everyone else
+```{r}
+covariance <- round(solve(multinom_model$Hessian), 3)
+# summed negative values of non intercept
+# coefficients (comparing against base which is domesticated)
+alpha <- -0.17513 + 0.56719 - 0.19208 - 0.22192
+exp(alpha)
+alpha_matrix <- matrix(c(0, -1, 0, -1, 0, -1, 0, -1), nrow = 1, ncol = 8)
+se_alpha <- sqrt(alpha_matrix %*% covariance %*% t(alpha_matrix))
+# confidence interval :
+LB <- alpha - (1.96 * se_alpha)
+UB <- alpha + (1.96 * se_alpha)
+exp(LB)
+exp(UB)
+
+p_value(multinom_model)
+```
+
+
+# body weight and conservation level
+
+```{r}
+msleep %>% ggplot(aes(x = conservation, y = bodywt)) +
+  geom_boxplot()
+
+msleep %>% ggplot(aes(x = conservation, y = ln(bodywt))) +
+  geom_boxplot()
+
+multinom_model <- multinom(dom_factor ~ ln(bodywt), 
+                          data = filter(msleep, is.na(bodywt) == FALSE),
+                          Hess = TRUE)
+multinom_model
+
+covariance <- round(solve(multinom_model$Hessian), 3)
+# summed negative values of non intercept
+# coefficients (comparing against base which is domesticated)
+alpha <- 0.3612 - 0.77828 + 0.283122 - 0.034417
+exp(alpha)
+alpha_matrix <- matrix(c(0, -1, 0, -1, 0, -1, 0, -1), nrow = 1, ncol = 8)
+se_alpha <- sqrt(alpha_matrix %*% covariance %*% t(alpha_matrix))
+# confidence interval :
+LB <- alpha - (1.96 * se_alpha)
+UB <- alpha + (1.96 * se_alpha)
+exp(LB)
+exp(UB)
+
+p_value(multinom_model)
+```
+
+# relative brain wt and conservation level
+
+```{r}
+msleep <- msleep %>% mutate(
+  rel_brainwt = 100 * brainwt / bodywt
+) %>% filter(is.na(rel_brainwt) == FALSE)
+
+msleep %>% ggplot(aes(x = conservation, y = rel_brainwt)) +
+  geom_boxplot()
+
+msleep %>% ggplot(aes(x = dom, y = rel_brainwt)) +
+  geom_boxplot()
+
+#msleep %>% ggplot(aes(x = dom_factor, y = rel_brainwt)) +
+  #geom_boxplot()
+
+multinom_model_dom <- multinom(msleep_factor ~ rel_brainwt,
+                                data = msleep, Hess = TRUE)
+multinom_model_dom
+multinom_model_cons <- multinom(dom_factor ~ rel_brainwt,
+                                data = msleep,
+                                Hess = TRUE)
+multinom_model_cons
+```
+
+# compute confidence interval for conservation level
+
+```{r}
+covariance <- round(solve(multinom_model_cons$Hessian), 3)
+# summed negative values of non intercept
+# coefficients (comparing against base which is domesticated)
+alpha <- -1.44007 + 56.1596 -1.3139 +.96068
+exp(alpha)
+# if ur testing domesticated vs. not domesticated change to c(0, -1), nrow = 1, ncol = 2
+alpha_matrix <- matrix(c(0, -1, 0, -1, 0, -1, 0, -1), nrow = 1, ncol = 8)
+se_alpha <- sqrt(alpha_matrix %*% covariance %*% t(alpha_matrix))
+# confidence interval :
+LB <- alpha - (1.96 * se_alpha)
+UB <- alpha + (1.96 * se_alpha)
+exp(LB)
+exp(UB)
+# copy p_value function from doc
+p_value(multinom_model_cons)
+```
+
+
+# confidence interval for dom vs non dom
+
+```{r}
+covariance <- round(solve(multinom_model_dom$Hessian), 3)
+alpha <- .9311079
+exp(alpha)
+
+alpha_matrix <- matrix(c(0, 1), nrow = 1, ncol = 2)
+se_alpha <- sqrt(alpha_matrix %*% covariance %*% t(alpha_matrix))
+
+# confidence interval :
+LB <- alpha - (1.96 * se_alpha)
+UB <- alpha + (1.96 * se_alpha)
+exp(LB)
+exp(UB)
+
+p_value(multinom_model_dom)
+```
